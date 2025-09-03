@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Data Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(-45deg, #06b6d4, #9333ea, #14b8a6, #06b6d4);
+            background-size: 400% 400%;
+            animation: moveGradient 15s ease infinite;
+        }
+
+        @keyframes moveGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 24px;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid #334155;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal.is-active {
+            opacity: 1;
+        }
+        .modal.is-active .modal-content {
+            transform: translateY(0);
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .modal-message {
+            margin-bottom: 1rem;
+        }
+
+        /* Glassmorphism Styles */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glass-table-row {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-table-row:nth-child(even) {
+            background: rgba(30, 41, 59, 0.3);
+        }
+        .glass-table-row:hover {
+            background: rgba(30, 41, 59, 0.7);
+        }
+
+        /* Custom Animations */
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animated-container {
+            animation: fadeInSlideUp 0.8s ease-out forwards;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes glow {
+          from {
+            box-shadow: 0 0 0px var(--tw-shadow-color);
+          }
+          to {
+            box-shadow: 0 0 15px var(--tw-shadow-color), 0 0 20px var(--tw-shadow-color);
+          }
+        }
+
+        .glow-on-focus:focus {
+          --tw-shadow-color: #06b6d4;
+          animation: glow 1s ease-in-out infinite alternate;
+        }
+
+        .animate-on-entry {
+            animation: slideInLeft 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        
+        .table-row-animation {
+            animation: slideInLeft 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 flex items-center justify-center">
+
+    <!-- Custom Modal for Confirmation and Messages -->
+    <div id="custom-modal" class="modal">
+        <div class="modal-content glass-card">
+            <div id="modal-message" class="modal-message"></div>
+            <div id="modal-buttons" class="modal-buttons">
+                <button id="modal-cancel-btn" class="px-6 py-2 text-sm font-medium rounded-full bg-slate-700 text-white hover:bg-slate-600 transition-colors">Cancel</button>
+                <button id="modal-confirm-btn" class="px-6 py-2 text-sm font-medium rounded-full text-white bg-red-600 hover:bg-red-700 transition-colors">Confirm</button>
+                <button id="modal-ok-btn" class="hidden px-6 py-2 text-sm font-medium rounded-full text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto max-w-5xl text-white rounded-3xl p-6 sm:p-10 space-y-10 animated-container glass-card">
+        <header class="text-center">
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-white mb-2 tracking-wide">Student Data Manager</h1>
+            <p class="text-slate-200 text-lg">A powerful tool for managing student records with a modern touch.</p>
+        </header>
+
+        <!-- Student Form -->
+        <div class="p-8 rounded-2xl animate-on-entry glass-card">
+            <h2 class="text-2xl font-bold text-white mb-6">Add/Update Student Data</h2>
+            <form id="student-form" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                        <label for="enrollmentNo" class="block text-sm font-medium text-slate-200 mb-1">Enrollment No.</label>
+                        <input type="text" id="enrollmentNo" placeholder="e.g., 2023001" required
+                               class="mt-1 block w-full rounded-lg border-slate-500 bg-slate-800 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 outline-none transition-colors glow-on-focus">
+                    </div>
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-slate-200 mb-1">Name</label>
+                        <input type="text" id="name" placeholder="e.g., Jane Doe" required
+                               class="mt-1 block w-full rounded-lg border-slate-500 bg-slate-800 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 outline-none transition-colors glow-on-focus">
+                    </div>
+                    <div>
+                        <label for="phoneNo" class="block text-sm font-medium text-slate-200 mb-1">Phone No.</label>
+                        <input type="tel" id="phoneNo" placeholder="e.g., 9876543210" required
+                               class="mt-1 block w-full rounded-lg border-slate-500 bg-slate-800 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 outline-none transition-colors glow-on-focus">
+                    </div>
+                    <div>
+                        <label for="division" class="block text-sm font-medium text-slate-200 mb-1">Division</label>
+                        <input type="text" id="division" placeholder="e.g., A" required
+                               class="mt-1 block w-full rounded-lg border-slate-500 bg-slate-800 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 outline-none transition-colors glow-on-focus">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-slate-200 mb-1">Email</label>
+                        <input type="email" id="email" placeholder="e.g., example@domain.com" required
+                               class="mt-1 block w-full rounded-lg border-slate-500 bg-slate-800 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 outline-none transition-colors glow-on-focus">
+                    </div>
+                    <div>
+                        <label for="cgpa" class="block text-sm font-medium text-slate-200 mb-1">CGPA</label>
+                        <input type="number" step="0.01" min="0" max="10" id="cgpa" placeholder="e.g., 8.50" required
+                               class="mt-1 block w-full rounded-lg border-slate-500 bg-slate-800 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 outline-none transition-colors glow-on-focus">
+                    </div>
+                </div>
+                <div class="flex items-center justify-end space-x-3 mt-8">
+                    <button type="button" id="clearBtn" class="px-6 py-3 text-sm font-semibold rounded-full bg-slate-600 text-white hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-300 transform hover:scale-105">
+                        Clear
+                    </button>
+                    <button type="submit" id="submitBtn" class="px-8 py-3 text-sm font-semibold rounded-full text-white bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all duration-300 transform hover:scale-105">
+                        Add Student
+                    </button>
+                    <button type="button" id="updateBtn" class="hidden px-8 py-3 text-sm font-semibold rounded-full text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-300 transform hover:scale-105">
+                        Update Student
+                    </button>
+                    <button type="button" id="exportBtn" class="px-8 py-3 text-sm font-semibold rounded-full text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300 transform hover:scale-105">
+                        Export to CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Student Table & Search -->
+        <div class="space-y-6 animate-on-entry">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Search by name, enrollment no., division, or email..."
+                       class="mt-1 block w-full rounded-full border-slate-500 bg-slate-700 text-white shadow-sm focus:border-cyan-500 focus:ring-cyan-500 p-3 pl-12 outline-none transition-colors glow-on-focus">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+            <div class="overflow-x-auto relative shadow-xl rounded-2xl glass-card">
+                <table class="w-full text-sm text-left text-slate-200">
+                    <thead class="text-xs text-white uppercase bg-slate-600">
+                        <tr>
+                            <th scope="col" class="py-4 px-6 rounded-tl-2xl">Enrollment No.</th>
+                            <th scope="col" class="py-4 px-6">Name</th>
+                            <th scope="col" class="py-4 px-6 hidden sm:table-cell">Phone No.</th>
+                            <th scope="col" class="py-4 px-6 hidden lg:table-cell">Division</th>
+                            <th scope="col" class="py-4 px-6 hidden sm:table-cell">Email</th>
+                            <th scope="col" class="py-4 px-6 text-right">CGPA</th>
+                            <th scope="col" class="py-4 px-6 text-right rounded-tr-2xl">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-table-body">
+                        <!-- Student data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="no-data-message" class="text-center text-slate-400 italic p-4" style="display: none;">
+            No student data found. Add a new student using the form above.
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('student-form');
+        const enrollmentInput = document.getElementById('enrollmentNo');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phoneNo');
+        const divisionInput = document.getElementById('division');
+        const emailInput = document.getElementById('email');
+        const cgpaInput = document.getElementById('cgpa');
+        const submitBtn = document.getElementById('submitBtn');
+        const updateBtn = document.getElementById('updateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const tableBody = document.getElementById('student-table-body');
+        const noDataMessage = document.getElementById('no-data-message');
+        const searchInput = document.getElementById('searchInput');
+
+        // Modal elements
+        const customModal = document.getElementById('custom-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalOkBtn = document.getElementById('modal-ok-btn');
+
+        // Initial student data
+        let students = [
+            { "enrollmentNo": "2203051050016", "name": "Arjun", "phoneNo": "98765XXXXX", "division": "A", "email": "arjunbose@outlook.com", "cgpa": 8.15 },
+            { "enrollmentNo": "2203051050051", "name": "Ananya", "phoneNo": "78936XXXXX", "division": "A", "email": "ananyarao@yahoo.in", "cgpa": 8.75 },
+            { "enrollmentNo": "2203051050011", "name": "Priya", "phoneNo": "75319XXXXX", "division": "C", "email": "priyakrishnan@gmail.com", "cgpa": 9.2 },
+            { "enrollmentNo": "2203051050045", "name": "Rahul", "phoneNo": "82195XXXXX", "division": "B", "email": "rahul.jain.dev@yahoo.co.in", "cgpa": 9.5 },
+            { "enrollmentNo": "2203051050054", "name": "Rohan", "phoneNo": "89240XXXXX", "division": "C", "email": "ro_sharma@rediffmail.com", "cgpa": 7.55 },
+            { "enrollmentNo": "2203051050089", "name": "Diya", "phoneNo": "60472XXXXX", "division": "B", "email": "arjun.bose@outlook.com", "cgpa": 6.45 },
+            { "enrollmentNo": "2203051050018", "name": "Kavita", "phoneNo": "63821XXXXX", "division": "A", "email": "kavita.desai@outlook.com", "cgpa": 6.8 },
+            { "enrollmentNo": "2203051050014", "name": "Siddharth", "phoneNo": "95687XXXXX", "division": "B", "email": "sidd.k@live.in", "cgpa": 8.9 },
+            { "enrollmentNo": "2203051050047", "name": "Vikram", "phoneNo": "91054XXXXX", "division": "B", "email": "vikram.m@protonmail.com", "cgpa": 9.85 },
+            { "enrollmentNo": "2203051050050", "name": "Nisha", "phoneNo": "72834XXXXX", "division": "C", "email": "nisha.jain.dev@yahoo.co.in", "cgpa": 7.05 }
+        ];
+
+        let currentEditingEnrollment = null;
+
+        // Custom modal functions
+        function showCustomMessage(message, isConfirmation = false, onConfirm = null) {
+            modalMessage.textContent = message;
+            customModal.classList.add('is-active');
+            if (isConfirmation) {
+                modalConfirmBtn.style.display = 'inline-block';
+                modalCancelBtn.style.display = 'inline-block';
+                modalOkBtn.style.display = 'none';
+                modalConfirmBtn.onclick = () => {
+                    customModal.classList.remove('is-active');
+                    if (onConfirm) onConfirm();
+                };
+                modalCancelBtn.onclick = () => {
+                    customModal.classList.remove('is-active');
+                };
+            } else {
+                modalConfirmBtn.style.display = 'none';
+                modalCancelBtn.style.display = 'none';
+                modalOkBtn.style.display = 'inline-block';
+                modalOkBtn.onclick = () => {
+                    customModal.classList.remove('is-active');
+                };
+            }
+        }
+
+        // Function to render the table with student data
+        function renderTable(studentsToRender = students) {
+            tableBody.innerHTML = '';
+            if (studentsToRender.length === 0) {
+                noDataMessage.style.display = 'block';
+            } else {
+                noDataMessage.style.display = 'none';
+                studentsToRender.forEach((student, index) => {
+                    const row = document.createElement('tr');
+                    row.className = `glass-table-row hover:bg-slate-600 transition-colors table-row-animation`;
+                    row.style.animationDelay = `${index * 0.1}s`;
+                    row.innerHTML = `
+                        <td class="py-4 px-6 font-medium text-white whitespace-nowrap">${student.enrollmentNo}</td>
+                        <td class="py-4 px-6">${student.name}</td>
+                        <td class="py-4 px-6 hidden sm:table-cell">${student.phoneNo}</td>
+                        <td class="py-4 px-6 hidden lg:table-cell">${student.division}</td>
+                        <td class="py-4 px-6 hidden sm:table-cell"><a href="mailto:${student.email}" class="text-blue-400 hover:underline">${student.email}</a></td>
+                        <td class="py-4 px-6 text-right font-semibold text-cyan-400">${student.cgpa}</td>
+                        <td class="py-4 px-6 text-right space-x-2">
+                            <button type="button" data-enrollment="${student.enrollmentNo}" class="edit-btn font-medium text-blue-400 hover:underline">Edit</button>
+                            <button type="button" data-enrollment="${student.enrollmentNo}" class="delete-btn font-medium text-red-400 hover:underline">Delete</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Attach event listeners to edit and delete buttons after rendering
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', handleEdit);
+                });
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', handleDelete);
+                });
+            }
+        }
+
+        // Handle form submission (Add new student)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newStudent = {
+                enrollmentNo: enrollmentInput.value.trim(),
+                name: nameInput.value.trim(),
+                phoneNo: phoneInput.value.trim(),
+                division: divisionInput.value.trim().toUpperCase(),
+                email: emailInput.value.trim(),
+                cgpa: parseFloat(cgpaInput.value)
+            };
+
+            // Check if enrollment number already exists
+            const existingStudent = students.find(s => s.enrollmentNo === newStudent.enrollmentNo);
+            if (existingStudent) {
+                showCustomMessage('Error: A student with this enrollment number already exists. Please use a unique number.');
+                return;
+            }
+
+            students.push(newStudent);
+            renderTable();
+            form.reset();
+        });
+
+        // Handle the update button click
+        updateBtn.addEventListener('click', () => {
+            if (!currentEditingEnrollment) return;
+
+            const studentIndex = students.findIndex(s => s.enrollmentNo === currentEditingEnrollment);
+            if (studentIndex > -1) {
+                students[studentIndex].name = nameInput.value.trim();
+                students[studentIndex].phoneNo = phoneInput.value.trim();
+                students[studentIndex].division = divisionInput.value.trim().toUpperCase();
+                students[studentIndex].email = emailInput.value.trim();
+                students[studentIndex].cgpa = parseFloat(cgpaInput.value);
+
+                renderTable();
+                form.reset();
+                submitBtn.style.display = 'block';
+                updateBtn.style.display = 'none';
+                enrollmentInput.disabled = false;
+                currentEditingEnrollment = null;
+            }
+        });
+
+        // Handle edit button click
+        function handleEdit(e) {
+            const enrollmentToEdit = e.target.dataset.enrollment;
+            const studentToEdit = students.find(s => s.enrollmentNo === enrollmentToEdit);
+
+            if (studentToEdit) {
+                enrollmentInput.value = studentToEdit.enrollmentNo;
+                nameInput.value = studentToEdit.name;
+                phoneInput.value = studentToEdit.phoneNo;
+                divisionInput.value = studentToEdit.division;
+                emailInput.value = studentToEdit.email;
+                cgpaInput.value = studentToEdit.cgpa;
+
+                currentEditingEnrollment = studentToEdit.enrollmentNo;
+                submitBtn.style.display = 'none';
+                updateBtn.style.display = 'block';
+                enrollmentInput.disabled = true;
+            }
+        }
+
+        // Handle delete button click
+        function handleDelete(e) {
+            const enrollmentToDelete = e.target.dataset.enrollment;
+            showCustomMessage(`Are you sure you want to delete student with Enrollment No. ${enrollmentToDelete}?`, true, () => {
+                students = students.filter(s => s.enrollmentNo !== enrollmentToDelete);
+                renderTable();
+            });
+        }
+
+        // Handle clear button click
+        clearBtn.addEventListener('click', () => {
+            form.reset();
+            submitBtn.style.display = 'block';
+            updateBtn.style.display = 'none';
+            enrollmentInput.disabled = false;
+            currentEditingEnrollment = null;
+        });
+
+        // Handle export to CSV button click
+        exportBtn.addEventListener('click', () => {
+            if (students.length === 0) {
+                showCustomMessage('No data to export.');
+                return;
+            }
+
+            const headers = ['Enrollment No.', 'Name', 'Phone No.', 'Division', 'Email', 'CGPA'];
+            const rows = students.map(s => [s.enrollmentNo, s.name, s.phoneNo, s.division, s.email, s.cgpa].join(','));
+
+            const csvContent = [headers.join(','), ...rows].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'student_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Handle search input
+        searchInput.addEventListener('keyup', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredStudents = students.filter(student =>
+                student.name.toLowerCase().includes(searchTerm) ||
+                student.enrollmentNo.toLowerCase().includes(searchTerm) ||
+                student.division.toLowerCase().includes(searchTerm) ||
+                student.email.toLowerCase().includes(searchTerm)
+            );
+            renderTable(filteredStudents);
+        });
+
+        // Initial render
+        renderTable();
+    </script>
+</body>
+</html>
