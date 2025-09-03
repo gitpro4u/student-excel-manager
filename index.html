@@ -9,6 +9,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            /* Animated gradient background */
             background: linear-gradient(-45deg, #06b6d4, #9333ea, #14b8a6, #06b6d4);
             background-size: 400% 400%;
             animation: moveGradient 15s ease infinite;
@@ -206,6 +207,10 @@
                     <button type="button" id="exportBtn" class="px-8 py-3 text-sm font-semibold rounded-full text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300 transform hover:scale-105">
                         Export to CSV
                     </button>
+                    <button type="button" id="importBtn" class="px-8 py-3 text-sm font-semibold rounded-full text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all duration-300 transform hover:scale-105">
+                        Import CSV
+                    </button>
+                    <input type="file" id="fileInput" accept=".csv" class="hidden">
                 </div>
             </form>
         </div>
@@ -255,6 +260,8 @@
         const updateBtn = document.getElementById('updateBtn');
         const clearBtn = document.getElementById('clearBtn');
         const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const fileInput = document.getElementById('fileInput');
         const tableBody = document.getElementById('student-table-body');
         const noDataMessage = document.getElementById('no-data-message');
         const searchInput = document.getElementById('searchInput');
@@ -332,16 +339,36 @@
                     `;
                     tableBody.appendChild(row);
                 });
-
-                // Attach event listeners to edit and delete buttons after rendering
-                document.querySelectorAll('.edit-btn').forEach(btn => {
-                    btn.addEventListener('click', handleEdit);
-                });
-                document.querySelectorAll('.delete-btn').forEach(btn => {
-                    btn.addEventListener('click', handleDelete);
-                });
             }
         }
+
+        // Use event delegation on the table body for Edit and Delete buttons
+        tableBody.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const enrollmentToDelete = e.target.dataset.enrollment;
+                showCustomMessage(`Are you sure you want to delete student with Enrollment No. ${enrollmentToDelete}?`, true, () => {
+                    students = students.filter(s => s.enrollmentNo !== enrollmentToDelete);
+                    renderTable();
+                });
+            } else if (e.target.classList.contains('edit-btn')) {
+                const enrollmentToEdit = e.target.dataset.enrollment;
+                const studentToEdit = students.find(s => s.enrollmentNo === enrollmentToEdit);
+
+                if (studentToEdit) {
+                    enrollmentInput.value = studentToEdit.enrollmentNo;
+                    nameInput.value = studentToEdit.name;
+                    phoneInput.value = studentToEdit.phoneNo;
+                    divisionInput.value = studentToEdit.division;
+                    emailInput.value = studentToEdit.email;
+                    cgpaInput.value = studentToEdit.cgpa;
+
+                    currentEditingEnrollment = studentToEdit.enrollmentNo;
+                    submitBtn.style.display = 'none';
+                    updateBtn.style.display = 'block';
+                    enrollmentInput.disabled = true;
+                }
+            }
+        });
 
         // Handle form submission (Add new student)
         form.addEventListener('submit', (e) => {
@@ -388,35 +415,6 @@
             }
         });
 
-        // Handle edit button click
-        function handleEdit(e) {
-            const enrollmentToEdit = e.target.dataset.enrollment;
-            const studentToEdit = students.find(s => s.enrollmentNo === enrollmentToEdit);
-
-            if (studentToEdit) {
-                enrollmentInput.value = studentToEdit.enrollmentNo;
-                nameInput.value = studentToEdit.name;
-                phoneInput.value = studentToEdit.phoneNo;
-                divisionInput.value = studentToEdit.division;
-                emailInput.value = studentToEdit.email;
-                cgpaInput.value = studentToEdit.cgpa;
-
-                currentEditingEnrollment = studentToEdit.enrollmentNo;
-                submitBtn.style.display = 'none';
-                updateBtn.style.display = 'block';
-                enrollmentInput.disabled = true;
-            }
-        }
-
-        // Handle delete button click
-        function handleDelete(e) {
-            const enrollmentToDelete = e.target.dataset.enrollment;
-            showCustomMessage(`Are you sure you want to delete student with Enrollment No. ${enrollmentToDelete}?`, true, () => {
-                students = students.filter(s => s.enrollmentNo !== enrollmentToDelete);
-                renderTable();
-            });
-        }
-
         // Handle clear button click
         clearBtn.addEventListener('click', () => {
             form.reset();
@@ -449,6 +447,69 @@
             link.click();
             document.body.removeChild(link);
         });
+
+        // Handle import from CSV button click
+        importBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvData = e.target.result;
+                const newStudents = parseCsv(csvData);
+                let importedCount = 0;
+                let skippedCount = 0;
+                
+                newStudents.forEach(newStudent => {
+                    const existingStudent = students.find(s => s.enrollmentNo === newStudent.enrollmentNo);
+                    if (!existingStudent) {
+                        students.push(newStudent);
+                        importedCount++;
+                    } else {
+                        skippedCount++;
+                    }
+                });
+
+                renderTable();
+                showCustomMessage(`Import complete! ${importedCount} students added, ${skippedCount} students skipped (duplicates).`);
+            };
+            reader.readAsText(file);
+        });
+
+        // Function to parse a CSV string into an array of student objects
+        function parseCsv(csvString) {
+            const lines = csvString.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                showCustomMessage('The CSV file appears to be empty or malformed.');
+                return [];
+            }
+            
+            // Assuming the first row is the header, which we'll ignore for now.
+            // The order of columns is assumed to be Enrollment No, Name, Phone No, Division, Email, CGPA
+            const dataLines = lines.slice(1);
+            
+            const parsedData = dataLines.map(line => {
+                const values = line.split(',');
+                if (values.length !== 6) {
+                    // Optional: handle malformed rows
+                    return null;
+                }
+                return {
+                    enrollmentNo: values[0].trim(),
+                    name: values[1].trim(),
+                    phoneNo: values[2].trim(),
+                    division: values[3].trim().toUpperCase(),
+                    email: values[4].trim(),
+                    cgpa: parseFloat(values[5])
+                };
+            }).filter(item => item !== null && !isNaN(item.cgpa)); // Filter out any malformed rows and invalid CGPA
+
+            return parsedData;
+        }
 
         // Handle search input
         searchInput.addEventListener('keyup', (e) => {
